@@ -1,4 +1,4 @@
-APK 路径: /home/eric/Git/YuyanIme/app/build/outputs/apk/[offline|online]/debug/
+APK 路径: /apk/[offline|online]/debug/
 
 # 语燕输入法
 雨燕以其敏捷、优雅的飞行姿态，在雨天依然够飞翔、不畏艰险、勇往直前的飞翔态度，被赋予**灵巧、聪明、伶俐、积极、创新**的寓意。语言是人类交流的基本工具，是最重要的文化载体，输入方式是语言交流和信息传递的重要环节，使语言交流变得更加**高效、便捷**。  
