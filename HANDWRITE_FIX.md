@@ -398,6 +398,66 @@ if (mSBPoint.size > 8192) {
 
 - 不依赖 native 内部状态是否健康
 - 逻辑简单，回滚风险低
+
+---
+
+# 仍在修复的问题（2026-02-26）
+
+## 现象
+
+- 手写抬手后偶发无候选词
+- 日志中出现 `HWEngine.kt:42` 的异常堆栈（无明确崩溃）
+
+## 根因（新发现）
+
+`HandWriting.getCandidatesPyComposition()` 在 native 层偶发返回 `null`，而 Kotlin 侧按非空处理，触发 NPE：
+
+```kotlin
+val candidatesPyComposition = HandWriting.getCandidatesPyComposition()
+val candidates = candidatesPyComposition.getOrNull(0)
+```
+
+## 修复方案（已落实）
+
+对 native 返回值做空保护，并区分 `candidates` 与 `candidates[0]` 为空的情况：
+
+```kotlin
+val candidatesPyComposition: Array<Array<String?>?>? =
+    try {
+        HandWriting.getCandidatesPyComposition()
+    } catch (_: Throwable) {
+        null
+    }
+if (candidatesPyComposition == null || candidatesPyComposition.isEmpty()) {
+    handleEmptyResult("candidates empty", intArray.size)
+    return
+}
+val candidates = candidatesPyComposition.getOrNull(0)
+if (candidates == null || candidates.isEmpty()) {
+    handleEmptyResult("candidates[0] empty", intArray.size)
+    return
+}
+```
+
+## 验证建议
+
+1. 连续书写 50+ 个汉字，观察是否仍出现 `HWEngine.kt:42` 堆栈
+2. 开启手写 debug log，确认 `empty result` 计数与修复逻辑能触发 `repairEngine()`
+
+## 补充修复（稳定复现：无候选词）
+
+现象表明 `mSBPoint` 持续累积导致引擎返回空结果，且复现稳定。已在识别触发时清空缓存，避免历史点污染下一次识别。
+
+**修改点**: `HandwritingKeyboard.kt` 的 `recognitionData()`  
+**策略**: 识别前复制快照，立刻清空原缓存
+
+```kotlin
+val pointsSnapshot = mSBPoint.toMutableList()
+clearStrokeBuffer()
+HWEngine.recognitionData(pointsSnapshot) { item ->
+    ...
+}
+```
 - 与“清除缓存能恢复”的表现一致
 
 ## 验证建议
